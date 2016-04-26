@@ -25,7 +25,7 @@ public class KafkaStreamsPoc {
 
     public static Logger logger = LogManager.getLogger(KafkaStreamsPoc.class.getSimpleName());
 
-    public static void main(char[] args) {
+    public static void main(String[] args) {
         Properties streamsConfiguration = new Properties();
         // Give the Streams application a unique name.  The name must be unique in the Kafka cluster
         // against which the application is run.
