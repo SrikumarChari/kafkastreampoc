@@ -15,6 +15,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -23,17 +24,28 @@ import java.util.Properties;
  */
 public class KafkaStreamsPoc {
 
-    public static Logger logger = LogManager.getLogger(KafkaStreamsPoc.class.getSimpleName());
+    public static Logger logger = LogManager.getLogger(KafkaStreamsPoc.class);
+    public static final Properties properties = new Properties();
 
     public static void main(String[] args) {
+        //initialize properties
+        try {
+            properties.load(KafkaStreamsPoc.class.getClassLoader().getResourceAsStream("kafkastreamspoc.properties"));
+        } catch (IOException e) {
+            logger.error("failed to load properties file");
+        }
+
         Properties streamsConfiguration = new Properties();
         // Give the Streams application a unique name.  The name must be unique in the Kafka cluster
         // against which the application is run.
         streamsConfiguration.put(StreamsConfig.JOB_ID_CONFIG, "wordcount-lambda-example");
+
         // Where to find Kafka broker(s).
-        streamsConfiguration.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        streamsConfiguration.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, properties.getProperty("kafka"));
+
         // Where to find the corresponding ZooKeeper ensemble.
-        streamsConfiguration.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2181");
+        streamsConfiguration.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, properties.getProperty("zookeeper"));
+
         // Specify default (de)serializers for record keys and for record values.
         streamsConfiguration.put(StreamsConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         streamsConfiguration.put(StreamsConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -65,7 +77,9 @@ public class KafkaStreamsPoc {
         // the default serdes specified in the Streams configuration above, because these defaults
         // match what's in the actual topic.  However we explicitly set the deserializers in the
         // call to `stream()` below in order to show how that's done, too.
-        KStream<String, String> textLines = builder.stream(stringDeserializer, stringDeserializer, "TextLinesTopic");
+        String inputTopic = properties.getProperty("input");
+
+        KStream<String, String> textLines = builder.stream(stringDeserializer, stringDeserializer, inputTopic);//"TextLinesTopic");
 
         KStream<String, Long> wordCounts = textLines
                 // Split each text line, by whitespace, into words.  The text lines are the message
@@ -86,7 +100,9 @@ public class KafkaStreamsPoc {
                 .toStream();
 
         // Write the `KStream<String, Long>` to the output topic.
-        wordCounts.to("WordsWithCountsTopic", stringSerializer, longSerializer);
+        String outputTopic = properties.getProperty("output");
+
+        wordCounts.to(outputTopic, stringSerializer, longSerializer);
 
         // Now that we have finished the definition of the processing topology we can actually run
         // it via `start()`.  The Streams application as a whole can be launched just like any
